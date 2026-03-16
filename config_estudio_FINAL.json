@@ -1,0 +1,413 @@
+{
+  "metadata": {
+    "fecha_ejecucion": "2026-03-15 05:03:48",
+    "random_seed": 42,
+    "notebook": "1._WTI_Preparacion_Datos.ipynb"
+  },
+  "fechas": {
+    "start_date": "2000-01-01",
+    "end_date": "2026-02-28",
+    "train_end": "2018-12-31",
+    "val_start": "2019-01-02",
+    "val_end": "2020-12-31",
+    "test_start": "2021-01-02"
+  },
+  "parametros": {
+    "percentiles": [
+      88,
+      90,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99
+    ],
+    "percentile_primary": 95,
+    "volatility_window": 21,
+    "rolling_var_window": 252,
+    "clip_floor": 0.01
+  },
+  "umbrales_clean": {
+    "p88": 0.03058860795902846,
+    "p90": 0.03242720841915482,
+    "p92": 0.03521517177128643,
+    "p93": 0.036495096082968456,
+    "p94": 0.04035643193422788,
+    "p95": 0.04299581565948056,
+    "p96": 0.04528206019463324,
+    "p97": 0.04829558048568969,
+    "p98": 0.053162545793952215,
+    "p99": 0.05993497957210785
+  },
+  "umbrales_all": {
+    "p88": 0.03058860795902846,
+    "p90": 0.03242720841915482,
+    "p92": 0.03521517177128643,
+    "p93": 0.036495096082968456,
+    "p94": 0.04035643193422788,
+    "p95": 0.04299581565948056,
+    "p96": 0.04528206019463324,
+    "p97": 0.04829558048568969,
+    "p98": 0.053162545793952215,
+    "p99": 0.05993497957210785
+  },
+  "var_all": {
+    "global_95": -0.03830343782282206,
+    "train_95": -0.03793360876524384,
+    "val_95": -0.05031687731625754,
+    "test_95": -0.03725557792799761
+  },
+  "var_clean": {
+    "train_95": -0.03793360876524384,
+    "val_95": -0.049414338998902546,
+    "test_95": -0.03725557792799761
+  },
+  "contaminacion": {
+    "dias_bad_return": 2,
+    "dias_bad_vol21": 22,
+    "fecha_inicio": "2020-04-20",
+    "fecha_fin": "2020-05-19"
+  },
+  "estadisticas": {
+    "n_total": 6385,
+    "n_train": 4584,
+    "n_validation": 505,
+    "n_test": 1296,
+    "eventos_p95_clean": 296
+  },
+  "export": {
+    "columns_core": [
+      "wti_raw",
+      "wti",
+      "returns",
+      "vol21",
+      "vol21_clean",
+      "volatilidad_ratio21",
+      "ma_short",
+      "ma_long",
+      "ma_cross",
+      "ret_abs_lag1",
+      "ret_abs_lag5",
+      "hl_spread",
+      "co_spread",
+      "high",
+      "low",
+      "open",
+      "volumen",
+      "volumen_ratio_21",
+      "var_rolling_252",
+      "var_rolling_252_lag1",
+      "p95_vol21_rolling_252"
+    ],
+    "columns_labels": [
+      "is_extreme_clean",
+      "is_extreme_p90_clean",
+      "is_extreme_p95_clean",
+      "is_extreme_p99_clean",
+      "is_extreme_dynamic"
+    ],
+    "columns_flags": [
+      "bad_return",
+      "bad_vol21",
+      "outlier_zscore_clean",
+      "returns_zscore_clean"
+    ]
+  },
+  "nb02": {
+    "umbral_clasificacion": 0.04299581565948056,
+    "ventana_vol": 21,
+    "random_seed": 42,
+    "splits": {
+      "train_end": "2018-12-31",
+      "val_start": "2019-01-02",
+      "val_end": "2020-12-31",
+      "test_start": "2021-01-02"
+    },
+    "baseline_ingenuo": {
+      "evaluado_en": "validation",
+      "mejor_baseline": "B1 — |ret_lag1| > P95",
+      "f1_minimo": 0.4872,
+      "auc_minimo": 0.8241
+    },
+    "baseline_cuantitativo": {
+      "evaluado_en": "validation",
+      "nombre": "B5 — vol21_lag1/VaR > P95",
+      "f1_val": 0.7416,
+      "auc_val": 0.9805,
+      "f1_test": 0.5474,
+      "auc_test": 0.9983,
+      "nota": "Christoffersen (1998) — excedencia ajustada por riesgo"
+    },
+    "desbalanceo_validacion": {
+      "n_total": 505,
+      "n_excluidos": 22,
+      "n_validos": 483,
+      "n_extremos": 39,
+      "tasa_pct": 8.07,
+      "ratio": 11.4
+    },
+    "features": {
+      "FEATURES_UNI": [
+        "vol21_clean"
+      ],
+      "FEATURES_MULTI": [
+        "vol21_clean",
+        "returns",
+        "ret_abs_lag1",
+        "hl_spread",
+        "co_spread",
+        "var_rolling_252_lag1",
+        "ma_cross",
+        "volumen_ratio_21"
+      ],
+      "FEATURES_ABLATION": [
+        "returns",
+        "ret_abs_lag1",
+        "hl_spread",
+        "co_spread",
+        "var_rolling_252_lag1",
+        "ma_cross",
+        "volumen_ratio_21"
+      ],
+      "LOOKBACK": 21
+    },
+    "advertencias": [
+      "umbral_clasificacion viene de train CLEAN — no recalcular en NB02",
+      "normalizacion: fit en train, transform en val y test",
+      "SMOTE prohibido — usar class_weight por estructura temporal",
+      "validacion cruzada: usar TimeSeriesSplit, no KFold aleatorio",
+      "ma_short y ma_long son niveles de precio NO estacionarios — usar ma_cross en FEATURES_MULTI",
+      "volatilidad_ratio21 excluida de FEATURES_MULTI: NaN post-bad_vol21 elimina 10/39 extremos en val (-25.6%) — disponible en CSV para NB03",
+      "var_rolling_252 sin lag NO debe usarse como feature — solo var_rolling_252_lag1"
+    ]
+  },
+  "nb02_results": {
+    "fecha_ejecucion": "2026-03-15T16:51:20.551191",
+    "modelos_evaluados": [
+      {
+        "nombre": "GARCH-GJR-GARCH",
+        "f1_test": 0.0,
+        "auc_test": 0.989255976363148,
+        "auc_pr_test": 0.7529448514552184,
+        "precision": 0.0,
+        "recall": 0.0,
+        "beats_ingenuo": false,
+        "beats_cuantitativo": false
+      },
+      {
+        "nombre": "LSTM-Simple-Uni",
+        "f1_test": 0.7142857142857143,
+        "auc_test": 0.9989255976363148,
+        "auc_pr_test": 0.9641344360194006,
+        "precision": 1.0,
+        "recall": 0.5555555555555556,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "BiDir-LSTM-Uni",
+        "f1_test": 0.8979591836734694,
+        "auc_test": 0.9975229056615036,
+        "auc_pr_test": 0.9565659402007378,
+        "precision": 1.0,
+        "recall": 0.8148148148148148,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "LSTM-Simple-Multi",
+        "f1_test": 0.5,
+        "auc_test": 0.9956725460351569,
+        "auc_pr_test": 0.8961927560744865,
+        "precision": 1.0,
+        "recall": 0.3333333333333333,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": false
+      },
+      {
+        "nombre": "BiDir-LSTM-Multi",
+        "f1_test": 0.0,
+        "auc_test": 0.937416062315337,
+        "auc_pr_test": 0.18530003685194826,
+        "precision": 0.0,
+        "recall": 0.0,
+        "beats_ingenuo": false,
+        "beats_cuantitativo": false
+      },
+      {
+        "nombre": "GRU-Simple-Uni",
+        "f1_test": 0.6829268292682927,
+        "auc_test": 0.99886590861611,
+        "auc_pr_test": 0.9550269875718553,
+        "precision": 1.0,
+        "recall": 0.5185185185185185,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "BiDir-GRU-Uni",
+        "f1_test": 0.8260869565217391,
+        "auc_test": 0.9990449756767242,
+        "auc_pr_test": 0.9671954189601246,
+        "precision": 1.0,
+        "recall": 0.7037037037037037,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "TCN-Uni",
+        "f1_test": 0.5507246376811594,
+        "auc_test": 0.980302623332438,
+        "auc_pr_test": 0.6076001729308222,
+        "precision": 0.4523809523809524,
+        "recall": 0.7037037037037037,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "XGBoost-Lags",
+        "f1_test": 0.9629629629629629,
+        "auc_test": 0.9993249985326055,
+        "auc_pr_test": 0.9504900970681969,
+        "precision": 0.9629629629629629,
+        "recall": 0.9629629629629629,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": true
+      },
+      {
+        "nombre": "B1 — Estándar mínimo (ingenuo)",
+        "f1_test": 0.4872,
+        "auc_test": 0.8241,
+        "auc_pr_test": null,
+        "precision": null,
+        "recall": null,
+        "beats_ingenuo": false,
+        "beats_cuantitativo": false
+      },
+      {
+        "nombre": "B5 — Ref. cuantitativa (Christoffersen)",
+        "f1_test": 0.5474,
+        "auc_test": 0.9983,
+        "auc_pr_test": null,
+        "precision": 0.45,
+        "recall": 1.0,
+        "beats_ingenuo": true,
+        "beats_cuantitativo": false
+      }
+    ]
+  },
+  "nb03": {
+    "fecha_ejecucion": "2026-03-16T00:07:04.800084",
+    "fuente_titulares": "GDELT Project (gdeltdoc)",
+    "modelo_sentimiento": "ProsusAI/finbert",
+    "n_titulares_totales": 9299,
+    "n_dias_reales": 0,
+    "n_dias_imputados": 6363,
+    "cobertura_pct": 0.0,
+    "cobertura_split": {
+      "train": {
+        "coverage_pct": 0.0,
+        "usable": false
+      },
+      "validation": {
+        "coverage_pct": 0.0,
+        "usable": false
+      },
+      "test": {
+        "coverage_pct": 0.0,
+        "usable": false
+      }
+    },
+    "cobertura_anual_pct": {
+      "2000": 0.0,
+      "2001": 0.0,
+      "2002": 0.0,
+      "2003": 0.0,
+      "2004": 0.0,
+      "2005": 0.0,
+      "2006": 0.0,
+      "2007": 0.0,
+      "2008": 0.0,
+      "2009": 0.0,
+      "2010": 0.0,
+      "2011": 0.0,
+      "2012": 0.0,
+      "2013": 0.0,
+      "2014": 0.0,
+      "2015": 0.0,
+      "2016": 0.0,
+      "2017": 0.0,
+      "2018": 0.0,
+      "2019": 0.0,
+      "2020": 0.0,
+      "2021": 0.0,
+      "2022": 0.0,
+      "2023": 0.0,
+      "2024": 0.0,
+      "2025": 0.0,
+      "2026": 0.0
+    },
+    "anios_baja_cobertura": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "umbral_baja_cobertura_pct": 30,
+    "shift_aplicado": "sentiment_score(t-1) → features en t",
+    "features_lag1": [
+      "sentiment_score_lag1",
+      "sentiment_std_lag1",
+      "n_articles_lag1",
+      "pct_positive_lag1",
+      "pct_negative_lag1"
+    ],
+    "correlacion_target": {
+      "sentiment_score_lag1": NaN,
+      "sentiment_std_lag1": NaN,
+      "n_articles_lag1": NaN,
+      "pct_positive_lag1": NaN,
+      "pct_negative_lag1": NaN
+    },
+    "validacion_predictiva_lag1": {
+      "r_contemporaneo": NaN,
+      "r_lag1_target_t1": NaN,
+      "bootstrap_spearman_mediana": null,
+      "bootstrap_spearman_ic95": [
+        null,
+        null
+      ]
+    },
+    "advertencias": [
+      "Usar SOLO columnas *_lag1 en NB02 — las contemporáneas son para diagnóstico",
+      "Días sin cobertura GDELT imputados con forward-fill (sentiment_flag=0)",
+      "Cobertura GDELT débil antes de 2014 — monitorear correlación en train"
+    ]
+  }
+}
