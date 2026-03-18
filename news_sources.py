@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 import os
 import time
 from typing import Iterable, Optional
@@ -61,8 +62,13 @@ class GDELTNewsSource(BaseNewsSource):
 
     @staticmethod
     def _quarter_blocks(start: str, end: str) -> list[tuple[str, str]]:
+        """Genera bloques trimestrales con semántica inclusiva en `end`.
+
+        Internamente usa intervalos semiabiertos [start, end+1día), lo que
+        garantiza que start == end produzca un bloque válido.
+        """
         t0 = pd.Timestamp(start).normalize()
-        t1 = pd.Timestamp(end).normalize()
+        t1 = pd.Timestamp(end).normalize() + pd.Timedelta(days=1)
         if t0 >= t1:
             return []
         out: list[tuple[str, str]] = []
@@ -97,21 +103,32 @@ class GDELTNewsSource(BaseNewsSource):
                 time.sleep(wait)
         return pd.DataFrame()
 
-    def fetch(self, search_terms: list[str], start_date: str, end_date: str) -> pd.DataFrame:
-        if os.path.exists(self.cache_path):
-            df = pd.read_csv(self.cache_path)
-            if not df.empty:
-                return self._standardize(df)
+    def _cache_meta_path(self) -> str:
+        return f"{self.cache_path}.meta.json"
 
-        from gdeltdoc import GdeltDoc
+    def _expected_cache_meta(self, search_terms: list[str]) -> dict:
+        return {
+            "provider": self.provider,
+            "search_terms": sorted(search_terms),
+            "domains": sorted(self.domains),
+            "reliable_from": str(self.reliable_from.date()),
+        }
 
-        t0 = max(pd.Timestamp(start_date), self.reliable_from)
-        t1 = min(pd.Timestamp(end_date), pd.Timestamp(datetime.now(timezone.utc).date()))
-        blocks = self._quarter_blocks(str(t0.date()), str(t1.date()))
-        if not blocks:
-            return pd.DataFrame(columns=STANDARD_COLUMNS)
+    def _load_cache_meta(self) -> dict:
+        path = self._cache_meta_path()
+        if not os.path.exists(path):
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
 
-        gd = GdeltDoc()
+    def _write_cache_meta(self, meta: dict) -> None:
+        with open(self._cache_meta_path(), "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    def _fetch_blocks(self, gd, blocks: list[tuple[str, str]], search_terms: list[str]) -> pd.DataFrame:
         chunks: list[pd.DataFrame] = []
         for i, (b0, b1) in enumerate(blocks, 1):
             local = []
@@ -126,13 +143,80 @@ class GDELTNewsSource(BaseNewsSource):
                 time.sleep(self.block_pause)
             if i % 5 == 0 or i == len(blocks):
                 print(f"  GDELT bloque {i}/{len(blocks)}")
-
         if not chunks:
+            return pd.DataFrame()
+        return pd.concat(chunks, ignore_index=True)
+
+    def fetch(self, search_terms: list[str], start_date: str, end_date: str) -> pd.DataFrame:
+        req_start = pd.Timestamp(start_date).normalize()
+        req_end = pd.Timestamp(end_date).normalize()
+        if req_start > req_end:
+            raise ValueError(f"Rango inválido: {req_start.date()} > {req_end.date()}")
+
+        upper_bound = pd.Timestamp(datetime.now(timezone.utc).date())
+        query_start = max(req_start, self.reliable_from)
+        query_end = min(req_end, upper_bound)
+        if query_start > query_end:
             return pd.DataFrame(columns=STANDARD_COLUMNS)
 
-        raw = pd.concat(chunks, ignore_index=True)
-        raw.to_csv(self.cache_path, index=False)
-        return self._standardize(raw)
+        cache_df = pd.DataFrame(columns=STANDARD_COLUMNS)
+        cache_meta_ok = False
+        expected_meta = self._expected_cache_meta(search_terms)
+        if os.path.exists(self.cache_path):
+            try:
+                loaded = pd.read_csv(self.cache_path)
+                if not loaded.empty:
+                    cache_df = self._standardize(loaded)
+            except Exception:
+                cache_df = pd.DataFrame(columns=STANDARD_COLUMNS)
+            cache_meta_ok = self._load_cache_meta() == expected_meta
+
+        if not cache_meta_ok:
+            cache_df = pd.DataFrame(columns=STANDARD_COLUMNS)
+
+        in_window = cache_df[
+            (cache_df["date"] >= query_start) &
+            (cache_df["date"] <= query_end)
+        ] if not cache_df.empty else cache_df
+
+        need_fetch = in_window.empty
+        if not need_fetch:
+            covered_min = pd.Timestamp(in_window["date"].min()).normalize()
+            covered_max = pd.Timestamp(in_window["date"].max()).normalize()
+            need_fetch = (covered_min > query_start) or (covered_max < query_end)
+
+        fetched = pd.DataFrame()
+        if need_fetch:
+            from gdeltdoc import GdeltDoc
+            gd = GdeltDoc()
+            missing_blocks: list[tuple[str, str]] = []
+            if in_window.empty:
+                missing_blocks.extend(self._quarter_blocks(str(query_start.date()), str(query_end.date())))
+            else:
+                covered_min = pd.Timestamp(in_window["date"].min()).normalize()
+                covered_max = pd.Timestamp(in_window["date"].max()).normalize()
+                if query_start < covered_min:
+                    missing_blocks.extend(self._quarter_blocks(str(query_start.date()), str((covered_min - pd.Timedelta(days=1)).date())))
+                if covered_max < query_end:
+                    missing_blocks.extend(self._quarter_blocks(str((covered_max + pd.Timedelta(days=1)).date()), str(query_end.date())))
+
+            fetched_raw = self._fetch_blocks(gd=gd, blocks=missing_blocks, search_terms=search_terms) if missing_blocks else pd.DataFrame()
+            fetched = self._standardize(fetched_raw) if not fetched_raw.empty else pd.DataFrame(columns=STANDARD_COLUMNS)
+
+            combined = pd.concat([cache_df, fetched], ignore_index=True) if not cache_df.empty else fetched
+            if combined.empty:
+                combined = pd.DataFrame(columns=STANDARD_COLUMNS)
+            else:
+                combined = combined.sort_values(["date", "provider"]).drop_duplicates(subset=["date", "headline", "provider"])
+            combined.to_csv(self.cache_path, index=False)
+            self._write_cache_meta(expected_meta)
+            cache_df = combined
+
+        out = cache_df[
+            (cache_df["date"] >= req_start) &
+            (cache_df["date"] <= req_end)
+        ] if not cache_df.empty else pd.DataFrame(columns=STANDARD_COLUMNS)
+        return out.reset_index(drop=True)
 
     def _standardize(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df.copy()
